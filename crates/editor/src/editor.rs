@@ -14288,6 +14288,32 @@ impl Editor {
     }
 
     pub fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
+        self.paste_from_clipboard(window, cx);
+    }
+
+    pub fn paste_primary_selection(
+        &mut self,
+        _: &PastePrimarySelection,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+        {
+            self.hide_mouse_cursor(HideMouseCursorOrigin::TypingAction, cx);
+            if let Some(item) = cx.read_from_primary() {
+                if let Some(text) = item.text() {
+                    self.do_paste(&text, None, true, window, cx);
+                }
+            }
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "freebsd")))]
+        {
+            self.paste_from_clipboard(window, cx);
+        }
+    }
+
+    fn paste_from_clipboard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.hide_mouse_cursor(HideMouseCursorOrigin::TypingAction, cx);
         if let Some(item) = cx.read_from_clipboard() {
             let clipboard_string = item.entries().iter().find_map(|entry| match entry {
